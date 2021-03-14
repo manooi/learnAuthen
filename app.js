@@ -1,10 +1,11 @@
-//jshint esversion:6
-require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-const md5 =  require("md5")
+// https://www.npmjs.com/package/bcrypt
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 
 const app = express();
 
@@ -42,24 +43,29 @@ app.get('/register', function(req, res) {
 });
 
 app.post('/register', function(req, res) {
-  const newUser = new User({
-    email: req.body.username,
-    password: md5(req.body.password)
-  });
-  newUser.save(function(err) {
+  const username = req.body.username;
+  const password = req.body.password;
+  bcrypt.hash(password, saltRounds, function(err, hash) {
+    const newUser = new User({
+      email: req.body.username,
+      password: hash
+    });
+    newUser.save(function(err) {
     if (!err) {
       // res.send('Successfully added a new user.');
       res.render('secrets.ejs');
     } else {
       res.send(err);
     }
+    });
   });
-})
+});
+
 
 app.post('/login', function(req, res) {
 
   const username = req.body.username;
-  const password = md5(req.body.password);
+  const password = req.body.password;
 
   User.findOne({
       email: username,
@@ -67,21 +73,23 @@ app.post('/login', function(req, res) {
     function(err, foundUser) {
       if (!err) {
         if (foundUser) {
-          if (foundUser.password === password ) {
-            res.render('secrets.ejs')
-          } else {
-            res.send('wrong password!')
-          }
-        } else {
-          res.send("User not found!");
+          bcrypt.compare(password, foundUser.password, function(err, result) {
+            if (result === true) {
+              res.render('secrets.ejs')
+            } else {
+              res.send("Wrong password")
+            }
+          });
+        }
+        else {
+          res.send("User not found");
         }
       } else {
-        res.send(err);
-      }
-    });
-})
-
-
+        res.send(err)
+        }
+    }
+  );
+});
 
 
 app.listen(3000, function() {
