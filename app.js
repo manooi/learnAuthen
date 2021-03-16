@@ -64,6 +64,7 @@ passport.use(new GoogleStrategy({
     userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
   },
   function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
     //install this first
     //npm install mongoose-findorcreate the make findOrCreate works!
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
@@ -78,19 +79,20 @@ app.get('/', function(req, res) {
   res.render('home.ejs')
 });
 
-
-// Stupid! 555
-// app.get('/auth/google', function(req, res) {
-//   passport.authenticate('google', {scope: ['profile', 'email']})
-// });
-
 app.get('/auth/google',
-  passport.authenticate('google', {scope: ['profile']})
-);
+  passport.authenticate('google', { scope: ['profile'] }));;
+
+app.get('/auth/google/secrets',
+  passport.authenticate('google', { failureRedirect: "/login" }),
+  function(req, res) {
+  // Successful authentication, redirect to secrets.
+    res.redirect('/secrets');
+  });
 
 app.get('/login', function(req, res) {
   res.render('login.ejs')
 });
+
 
 app.get('/logout', function(req, res) {
   req.logout();
@@ -101,7 +103,7 @@ app.get('/register', function(req, res) {
   res.render('register.ejs')
 });
 
-app.get('/secret', function(req, res) {
+app.get('/secrets', function(req, res) {
   if (req.isAuthenticated()) {
     res.render('secrets.ejs');
   } else {
@@ -116,7 +118,7 @@ app.post('/register', function(req, res) {
       res.redirect('/register');
     } else {
       passport.authenticate('local')(req, res, function() {
-      res.redirect('/secret');})
+      res.redirect('/secrets');})
     }
   })});
 
@@ -130,7 +132,7 @@ app.post('/login', function(req, res) {
       console.log(err);
     } else {
       passport.authenticate('local')(req, res, function() {
-      res.redirect('/secret');})
+      res.redirect('/secrets');})
     }
   });
 });
