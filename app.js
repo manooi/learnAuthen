@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate')
 
 const app = express();
 
@@ -14,6 +16,9 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+
+
+
 
 
 // Initialize session
@@ -27,6 +32,8 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
+
+
 mongoose.connect('mongodb://localhost:27017/userDB', {useNewUrlParser: true});
 mongoose.set('useCreateIndex', true);
 
@@ -37,6 +44,8 @@ const userSchema = new mongoose.Schema( {
 
 // Hash and salt
 userSchema.plugin(passportLocalMongoose);
+// add plugin for findOrCreate
+userSchema.plugin(findOrCreate);
 
 const User = mongoose.model('User', userSchema);
 
@@ -45,10 +54,39 @@ passport.use(User.createStrategy());
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
+// Below serializeUser and deserializeUser
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: 'http://localhost:3000/auth/google/secrets',
+    //add
+    //https://github.com/jaredhanson/passport-google-oauth2/pull/51
+    userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo'
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    //install this first
+    //npm install mongoose-findorcreate the make findOrCreate works!
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+// Before the routes too!
+
 
 app.get('/', function(req, res) {
   res.render('home.ejs')
 });
+
+
+// Stupid! 555
+// app.get('/auth/google', function(req, res) {
+//   passport.authenticate('google', {scope: ['profile', 'email']})
+// });
+
+app.get('/auth/google',
+  passport.authenticate('google', {scope: ['profile']})
+);
 
 app.get('/login', function(req, res) {
   res.render('login.ejs')
