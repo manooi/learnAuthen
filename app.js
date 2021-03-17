@@ -40,7 +40,8 @@ mongoose.set('useCreateIndex', true);
 const userSchema = new mongoose.Schema( {
   email: String,
   password: String,
-  googleId: String
+  googleId: String,
+  secret:String
 });
 
 // Hash and salt
@@ -117,12 +118,73 @@ app.get('/register', function(req, res) {
 });
 
 app.get('/secrets', function(req, res) {
+  User.find({'secret': {$ne:null}}, function(err, foundUser) {
+    if (err) {
+      console.log(err);
+    } else {
+      if (foundUser){
+        res.render('secrets', {userWithSecrets:foundUser})
+      }
+    }
+  });
+});
+
+app.get('/submit', function(req, res) {
   if (req.isAuthenticated()) {
-    res.render('secrets.ejs');
+    res.render('submit.ejs');
   } else {
     res.redirect('/login');
   }
 });
+
+app.post('/submit', function(req, res) {
+  const submittedSecret = req.body.secret;
+  // console.log("user is", req.user, req.user.id)
+
+
+  // Me might not work with gogole ID!!!
+
+  // User.findOneAndUpdate(
+  //   {googleId:req.user.googleId},
+  //   {$set: {secret: submittedSecret}},
+  //   function(err) {
+  //     if(err) {
+  //       console.log(err);
+  //     } else {
+  //       res.redirect('/secrets')
+  //     }
+  //   }
+  // )
+
+  //Angella
+
+  User.findById(req.user.id, function(err, foundUser) {
+    if (err) {
+      console.log(err);
+    } else {
+      if (foundUser) {
+        foundUser.secret = submittedSecret;
+        foundUser.save(function() {
+          res.redirect('/secrets');
+        })
+      }
+    }
+  })
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.post('/register', function(req, res) {
   User.register({username: req.body.username}, req.body.password, function(err, user) {
@@ -153,3 +215,15 @@ app.post('/login', function(req, res) {
 app.listen(3000, function() {
   console.log("Server strared on port 3000");
 });
+
+
+
+
+
+
+
+
+
+
+
+
